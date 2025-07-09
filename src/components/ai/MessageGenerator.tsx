@@ -68,42 +68,85 @@ export function MessageGenerator({ leadData }: MessageGeneratorProps) {
         name: "Direct Message",
         prompt: "Write a LinkedIn DM for {name} at {company}. Focus on providing value and starting a conversation about [topic]."
       }
+    ],
+    facebook: [
+      {
+        name: "Business Message",
+        prompt: "Create a professional Facebook message for {name} at {company}. Focus on business value and keep it conversational."
+      },
+      {
+        name: "Community Outreach",
+        prompt: "Write a Facebook message to connect with {name} about industry trends in {industry}."
+      }
+    ],
+    instagram: [
+      {
+        name: "DM Outreach",
+        prompt: "Create an Instagram DM for {name}. Be casual but professional, mentioning their company {company}."
+      },
+      {
+        name: "Story Reply",
+        prompt: "Write an Instagram story reply to {name} that opens a business conversation."
+      }
+    ],
+    sms: [
+      {
+        name: "Text Message",
+        prompt: "Create a brief SMS message for {name} at {company}. Keep it under 160 characters and professional."
+      },
+      {
+        name: "Follow-up Text",
+        prompt: "Write a follow-up SMS to {name} referencing a previous conversation."
+      }
     ]
   };
 
   const generateMessage = async () => {
+    if (!leadData) return;
+    
     setIsGenerating(true);
     
-    // Simulate AI generation (replace with actual OpenAI API call)
-    setTimeout(() => {
-      const mockMessage = messageType === "email" 
-        ? `Subject: Quick question about ${leadData?.company}'s growth strategy
+    try {
+      const response = await fetch('/supabase/functions/v1/generate-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          leadData,
+          channel: messageType,
+          messageType: 'cold_outreach',
+          tone,
+          customPrompt
+        }),
+      });
 
-Hi ${leadData?.name},
+      if (!response.ok) {
+        throw new Error('Failed to generate message');
+      }
 
-I hope this email finds you well. I came across ${leadData?.company} and was impressed by your recent expansion in the ${leadData?.industry} space.
+      const { subject, content } = await response.json();
+      
+      const formattedMessage = messageType === "email" && subject 
+        ? `Subject: ${subject}\n\n${content}`
+        : content;
 
-I work with similar companies to help streamline their outreach processes and boost conversion rates by 40-60%. Given your role as ${leadData?.title}, I thought you might be interested in a brief conversation about how we could potentially help ${leadData?.company} scale more efficiently.
-
-Would you be open to a quick 15-minute call this week to discuss?
-
-Best regards,
-[Your Name]`
-        : `Hi ${leadData?.name},
-
-I noticed your impressive work at ${leadData?.company} in the ${leadData?.industry} space. Would love to connect and share some insights that might help with your current growth initiatives.
-
-Best,
-[Your Name]`;
-
-      setGeneratedMessage(mockMessage);
-      setIsGenerating(false);
+      setGeneratedMessage(formattedMessage);
       
       toast({
         title: "Message Generated!",
         description: "Your AI-powered message is ready to use.",
       });
-    }, 2000);
+    } catch (error) {
+      console.error('Error generating message:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -134,16 +177,28 @@ Best,
       </CardHeader>
       <CardContent className="space-y-6">
         <Tabs value={messageType} onValueChange={setMessageType}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="email" className="flex items-center space-x-2">
-              <Mail className="w-4 h-4" />
-              <span>Email</span>
-            </TabsTrigger>
-            <TabsTrigger value="linkedin" className="flex items-center space-x-2">
-              <MessageSquare className="w-4 h-4" />
-              <span>LinkedIn</span>
-            </TabsTrigger>
-          </TabsList>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="email" className="flex items-center space-x-2">
+                <Mail className="w-4 h-4" />
+                <span>Email</span>
+              </TabsTrigger>
+              <TabsTrigger value="linkedin" className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>LinkedIn</span>
+              </TabsTrigger>
+              <TabsTrigger value="facebook" className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>Facebook</span>
+              </TabsTrigger>
+              <TabsTrigger value="instagram" className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>Instagram</span>
+              </TabsTrigger>
+              <TabsTrigger value="sms" className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>SMS</span>
+              </TabsTrigger>
+            </TabsList>
 
           <TabsContent value={messageType} className="space-y-6">
             {/* Lead Information */}
@@ -236,10 +291,10 @@ Best,
                   Generating...
                 </>
               ) : (
-                <>
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Generate {messageType === "email" ? "Email" : "LinkedIn Message"}
-                </>
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Generate {messageType.charAt(0).toUpperCase() + messageType.slice(1)} Message
+                  </>
               )}
             </Button>
 

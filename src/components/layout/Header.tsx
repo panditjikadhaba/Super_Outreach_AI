@@ -1,4 +1,4 @@
-import { Bell, Search, User, ChevronDown } from "lucide-react";
+import { Bell, Search, User, ChevronDown, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,8 +10,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export function Header() {
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed out successfully",
+      description: "You've been signed out of your account.",
+    });
+  };
+
   return (
     <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
       {/* Search */}
@@ -27,18 +40,6 @@ export function Header() {
 
       {/* Right side */}
       <div className="flex items-center space-x-4">
-        {/* Stats */}
-        <div className="flex items-center space-x-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-accent rounded-full"></div>
-            <span className="text-muted-foreground">3 Active Campaigns</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
-            <span className="text-muted-foreground">127 Emails Sent Today</span>
-          </div>
-        </div>
-
         {/* Notifications */}
         <Button variant="ghost" size="sm" className="relative">
           <Bell className="w-5 h-5" />
@@ -57,7 +58,7 @@ export function Header() {
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
-              <span className="hidden md:block">John Doe</span>
+              <span className="hidden md:block">{user?.email}</span>
               <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -73,8 +74,9 @@ export function Header() {
               Notifications
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              Log out
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

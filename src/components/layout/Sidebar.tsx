@@ -5,12 +5,9 @@ import {
   Users, 
   Mail, 
   MessageSquare, 
-  Settings, 
   Plus,
   Home,
   Target,
-  Calendar,
-  CreditCard,
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
@@ -23,8 +20,6 @@ const navigation = [
   { name: "Leads", href: "/leads", icon: Users },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Calendar", href: "/calendar", icon: Calendar },
-  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {

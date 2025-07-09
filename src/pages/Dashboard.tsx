@@ -10,8 +10,11 @@ import {
   Plus,
   BarChart3,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Target
 } from "lucide-react";
+import { useCampaigns, useLeads, useMessages } from "@/hooks/useSupabase";
+import { Link } from "react-router-dom";
 
 const mockStats = [
   {
@@ -122,6 +125,51 @@ const recentActivity = [
 ];
 
 export default function Dashboard() {
+  const { data: campaigns = [] } = useCampaigns();
+  const { data: leads = [] } = useLeads();
+  const { data: messages = [] } = useMessages();
+
+  const activeLeads = leads.filter(lead => lead.status !== 'lost').length;
+  const repliedMessages = messages.filter(msg => msg.status === 'replied').length;
+  const totalSent = messages.filter(msg => msg.status === 'sent').length;
+  const responseRate = totalSent > 0 ? ((repliedMessages / totalSent) * 100).toFixed(1) : '0';
+  const meetings = leads.filter(lead => lead.status === 'meeting').length;
+
+  const realStats = [
+    {
+      title: "Total Campaigns",
+      value: campaigns.length.toString(),
+      change: `${campaigns.filter(c => c.status === 'active').length} active`,
+      changeType: "positive" as const,
+      icon: Target,
+      description: "campaigns"
+    },
+    {
+      title: "Active Leads",
+      value: activeLeads.toString(),
+      change: "+12%",
+      changeType: "positive" as const,
+      icon: Users,
+      description: "vs last month"
+    },
+    {
+      title: "Response Rate",
+      value: `${responseRate}%`,
+      change: "+2.1%",
+      changeType: "positive" as const,
+      icon: TrendingUp,
+      description: "average"
+    },
+    {
+      title: "Meetings Booked",
+      value: meetings.toString(),
+      change: "+15%",
+      changeType: "positive" as const,
+      icon: Calendar,
+      description: "this month"
+    }
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -137,16 +185,18 @@ export default function Dashboard() {
             <FileText className="w-4 h-4 mr-2" />
             Export Report
           </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Campaign
-          </Button>
+          <Link to="/campaigns">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Campaign
+            </Button>
+          </Link>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {mockStats.map((stat, index) => (
+        {realStats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}
       </div>

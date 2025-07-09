@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { CampaignCard } from "@/components/campaigns/CampaignCard";
+import { CampaignForm } from "@/components/campaigns/CampaignForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCampaigns } from "@/hooks/useSupabase";
 import { 
   Plus, 
   Search, 
@@ -15,80 +18,30 @@ import {
   Archive
 } from "lucide-react";
 
-const mockCampaigns = [
-  {
-    id: "1",
-    name: "SaaS Founder Outreach Q1",
-    status: "active" as const,
-    leads: 1250,
-    sent: 890,
-    opens: 234,
-    replies: 67,
-    openRate: 26.3,
-    replyRate: 7.5,
-    channels: ["email", "linkedin"],
-    createdAt: "2024-01-15"
-  },
-  {
-    id: "2", 
-    name: "Tech Executive Follow-up",
-    status: "active" as const,
-    leads: 2100,
-    sent: 1456,
-    opens: 387,
-    replies: 89,
-    openRate: 26.6,
-    replyRate: 6.1,
-    channels: ["email"],
-    createdAt: "2024-01-10"
-  },
-  {
-    id: "3",
-    name: "Product Manager Series",
-    status: "paused" as const,
-    leads: 856,
-    sent: 345,
-    opens: 78,
-    replies: 23,
-    openRate: 22.6,
-    replyRate: 6.7,
-    channels: ["linkedin"],
-    createdAt: "2024-01-08"
-  },
-  {
-    id: "4",
-    name: "Enterprise Sales Q4",
-    status: "completed" as const,
-    leads: 3200,
-    sent: 3200,
-    opens: 896,
-    replies: 234,
-    openRate: 28.0,
-    replyRate: 7.3,
-    channels: ["email", "linkedin"],
-    createdAt: "2023-12-01"
-  },
-  {
-    id: "5",
-    name: "Startup Pitch Deck",
-    status: "draft" as const,
-    leads: 0,
-    sent: 0,
-    opens: 0,
-    replies: 0,
-    openRate: 0,
-    replyRate: 0,
-    channels: ["email"],
-    createdAt: "2024-01-20"
-  }
-];
-
 export default function Campaigns() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  
+  const { data: campaigns = [], isLoading } = useCampaigns();
+
+  // Transform campaigns data to match expected format
+  const transformedCampaigns = campaigns.map((campaign: any) => ({
+    id: campaign.id,
+    name: campaign.name,
+    status: campaign.status,
+    leads: 0, // You'll need to calculate this from leads table
+    sent: 0, // You'll need to calculate this from messages table
+    opens: 0, // You'll need to calculate this from messages table
+    replies: 0, // You'll need to calculate this from messages table
+    openRate: 0, // Calculated field
+    replyRate: 0, // Calculated field
+    channels: campaign.channels || [],
+    createdAt: campaign.created_at
+  }));
 
   const filterCampaigns = (status?: string) => {
-    let filtered = mockCampaigns;
+    let filtered = transformedCampaigns;
     
     if (status && status !== "all") {
       filtered = filtered.filter(campaign => campaign.status === status);
@@ -105,7 +58,7 @@ export default function Campaigns() {
 
   const getStatusCount = (status: string) => {
     if (status === "all") return mockCampaigns.length;
-    return mockCampaigns.filter(c => c.status === status).length;
+    return transformedCampaigns.filter(c => c.status === status).length;
   };
 
   return (
@@ -123,10 +76,34 @@ export default function Campaigns() {
             <BarChart3 className="w-4 h-4 mr-2" />
             Analytics
           </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Campaign
-          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                New Campaign
+              </Button>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Your First Campaign
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl">
+                  <CampaignForm 
+                    onSuccess={() => setIsCreateDialogOpen(false)}
+                    onCancel={() => setIsCreateDialogOpen(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <CampaignForm 
+                onSuccess={() => setIsCreateDialogOpen(false)}
+                onCancel={() => setIsCreateDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

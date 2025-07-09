@@ -20,7 +20,9 @@ import {
   FileText,
   Wand2,
   Eye,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2,
+  Send
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,64 +31,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-
-const mockTemplates = [
-  {
-    id: "1",
-    name: "Cold Email - SaaS Founders",
-    channel: "email",
-    message_type: "cold_outreach",
-    tone: "professional",
-    subject_template: "Quick question about {{company}}'s growth strategy",
-    content_template: "Hi {{name}},\n\nI noticed {{company}} has been growing rapidly in the {{industry}} space. I'm curious - what's your biggest challenge when it comes to scaling your customer acquisition?\n\nI've helped similar companies like [Company A] and [Company B] increase their conversion rates by 40%+ through strategic optimization.\n\nWould you be open to a brief 15-minute call this week to discuss how this might apply to {{company}}?\n\nBest regards,\n[Your Name]",
-    created_at: "2024-01-15T10:30:00Z",
-    updated_at: "2024-01-15T10:30:00Z"
-  },
-  {
-    id: "2",
-    name: "LinkedIn Connection Request",
-    channel: "linkedin",
-    message_type: "cold_outreach",
-    tone: "friendly",
-    subject_template: null,
-    content_template: "Hi {{name}}, I'd love to connect! I saw your work at {{company}} and would enjoy learning more about your experience in {{industry}}.",
-    created_at: "2024-01-14T14:20:00Z",
-    updated_at: "2024-01-14T14:20:00Z"
-  },
-  {
-    id: "3",
-    name: "Follow-up Email - No Response",
-    channel: "email",
-    message_type: "follow_up",
-    tone: "direct",
-    subject_template: "Re: {{previous_subject}}",
-    content_template: "Hi {{name}},\n\nI wanted to follow up on my previous email about helping {{company}} with [specific benefit].\n\nI understand you're busy, so I'll keep this brief. Would a quick 10-minute call work better for you?\n\nIf this isn't a priority right now, just let me know and I'll circle back in a few months.\n\nThanks,\n[Your Name]",
-    created_at: "2024-01-13T09:15:00Z",
-    updated_at: "2024-01-13T09:15:00Z"
-  },
-  {
-    id: "4",
-    name: "Meeting Request - Warm Lead",
-    channel: "email",
-    message_type: "meeting_request",
-    tone: "professional",
-    subject_template: "Meeting request - {{company}} growth discussion",
-    content_template: "Hi {{name}},\n\nThanks for your interest in learning more about how we can help {{company}}.\n\nI'd love to schedule a brief call to:\n- Understand your current challenges\n- Share relevant case studies\n- Discuss potential solutions\n\nI have availability:\n- [Time slot 1]\n- [Time slot 2]\n- [Time slot 3]\n\nWhich works best for you?\n\nLooking forward to our conversation!\n\n[Your Name]",
-    created_at: "2024-01-12T16:45:00Z",
-    updated_at: "2024-01-12T16:45:00Z"
-  },
-  {
-    id: "5",
-    name: "Thank You - Post Meeting",
-    channel: "email",
-    message_type: "thank_you",
-    tone: "friendly",
-    subject_template: "Thanks for the great conversation, {{name}}!",
-    content_template: "Hi {{name}},\n\nThank you for taking the time to speak with me today about {{company}}'s goals.\n\nAs promised, I'm attaching:\n- [Resource 1]\n- [Resource 2]\n- Next steps document\n\nI'll follow up early next week with the proposal we discussed.\n\nHave a great rest of your week!\n\n[Your Name]",
-    created_at: "2024-01-11T11:30:00Z",
-    updated_at: "2024-01-11T11:30:00Z"
-  }
-];
+import { 
+  useTemplates, 
+  useCreateTemplate, 
+  useUpdateTemplate, 
+  useDeleteTemplate,
+  useLeads,
+  useCreateMessage
+} from "@/hooks/useSupabase";
+import { MessageGenerator } from "@/components/ai/MessageGenerator";
 
 const channelOptions = [
   { value: "email", label: "Email", icon: Mail },
@@ -116,9 +69,20 @@ export default function Templates() {
   const [selectedType, setSelectedType] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [previewTemplate, setPreviewTemplate] = useState<any>(null);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [isUseTemplateOpen, setIsUseTemplateOpen] = useState(false);
   const { toast } = useToast();
+
+  // Database hooks
+  const { data: templates = [], isLoading } = useTemplates();
+  const { data: leads = [] } = useLeads();
+  const createTemplate = useCreateTemplate();
+  const updateTemplate = useUpdateTemplate();
+  const deleteTemplate = useDeleteTemplate();
+  const createMessage = useCreateMessage();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -129,7 +93,7 @@ export default function Templates() {
     content_template: ""
   });
 
-  const filteredTemplates = mockTemplates.filter(template => {
+  const filteredTemplates = templates.filter((template: any) => {
     const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          template.content_template.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesChannel = selectedChannel === "all" || template.channel === selectedChannel;
@@ -148,33 +112,71 @@ export default function Templates() {
     return toneOption ? toneOption.color : "bg-gray-100 text-gray-800";
   };
 
-  const handleCreateTemplate = () => {
-    // Here you would typically call your API to create the template
-    toast({
-      title: "Template Created",
-      description: `Template "${formData.name}" has been created successfully.`,
-    });
-    setIsCreateDialogOpen(false);
-    resetForm();
+  const handleCreateTemplate = async () => {
+    if (!formData.name || !formData.channel || !formData.message_type || !formData.content_template) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createTemplate.mutateAsync(formData);
+      toast({
+        title: "Template Created",
+        description: `Template "${formData.name}" has been created successfully.`,
+      });
+      setIsCreateDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create template. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEditTemplate = () => {
-    // Here you would typically call your API to update the template
-    toast({
-      title: "Template Updated",
-      description: `Template "${formData.name}" has been updated successfully.`,
-    });
-    setIsEditDialogOpen(false);
-    resetForm();
+  const handleEditTemplate = async () => {
+    if (!selectedTemplate) return;
+
+    try {
+      await updateTemplate.mutateAsync({
+        id: selectedTemplate.id,
+        ...formData
+      });
+      toast({
+        title: "Template Updated",
+        description: `Template "${formData.name}" has been updated successfully.`,
+      });
+      setIsEditDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update template. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteTemplate = (template: any) => {
-    // Here you would typically call your API to delete the template
-    toast({
-      title: "Template Deleted",
-      description: `Template "${template.name}" has been deleted.`,
-      variant: "destructive",
-    });
+  const handleDeleteTemplate = async (template: any) => {
+    try {
+      await deleteTemplate.mutateAsync(template.id);
+      toast({
+        title: "Template Deleted",
+        description: `Template "${template.name}" has been deleted.`,
+        variant: "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete template. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDuplicateTemplate = (template: any) => {
@@ -187,6 +189,56 @@ export default function Templates() {
       content_template: template.content_template
     });
     setIsCreateDialogOpen(true);
+  };
+
+  const handleUseTemplate = (template: any) => {
+    setSelectedTemplate(template);
+    setIsUseTemplateOpen(true);
+  };
+
+  const handleSendMessage = async (leadId: string) => {
+    if (!selectedTemplate || !leadId) return;
+
+    const lead = leads.find((l: any) => l.id === leadId);
+    if (!lead) return;
+
+    try {
+      // Replace template variables with lead data
+      const personalizedSubject = selectedTemplate.subject_template
+        ?.replace(/\{\{name\}\}/g, lead.name || '')
+        .replace(/\{\{company\}\}/g, lead.company || '')
+        .replace(/\{\{title\}\}/g, lead.title || '')
+        .replace(/\{\{industry\}\}/g, lead.industry || '');
+
+      const personalizedContent = selectedTemplate.content_template
+        .replace(/\{\{name\}\}/g, lead.name || '')
+        .replace(/\{\{company\}\}/g, lead.company || '')
+        .replace(/\{\{title\}\}/g, lead.title || '')
+        .replace(/\{\{industry\}\}/g, lead.industry || '');
+
+      await createMessage.mutateAsync({
+        lead_id: leadId,
+        campaign_id: lead.campaign_id,
+        channel: selectedTemplate.channel,
+        message_type: 'outbound',
+        subject: personalizedSubject,
+        content: personalizedContent,
+        status: 'draft',
+        ai_generated: false
+      });
+
+      toast({
+        title: "Message Created",
+        description: `Message created for ${lead.name} using template "${selectedTemplate.name}".`,
+      });
+      setIsUseTemplateOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create message. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const resetForm = () => {
@@ -213,6 +265,14 @@ export default function Templates() {
     setIsEditDialogOpen(true);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -224,7 +284,7 @@ export default function Templates() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setIsAIGeneratorOpen(true)}>
             <Wand2 className="w-4 h-4 mr-2" />
             AI Generate
           </Button>
@@ -245,7 +305,7 @@ export default function Templates() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Template Name</Label>
+                    <Label htmlFor="name">Template Name *</Label>
                     <Input
                       id="name"
                       value={formData.name}
@@ -254,7 +314,7 @@ export default function Templates() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="channel">Channel</Label>
+                    <Label htmlFor="channel">Channel *</Label>
                     <Select value={formData.channel} onValueChange={(value) => setFormData({...formData, channel: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select channel" />
@@ -274,7 +334,7 @@ export default function Templates() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="message_type">Message Type</Label>
+                    <Label htmlFor="message_type">Message Type *</Label>
                     <Select value={formData.message_type} onValueChange={(value) => setFormData({...formData, message_type: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
@@ -316,7 +376,7 @@ export default function Templates() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="content_template">Message Template</Label>
+                  <Label htmlFor="content_template">Message Template *</Label>
                   <Textarea
                     id="content_template"
                     value={formData.content_template}
@@ -332,8 +392,18 @@ export default function Templates() {
                   <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateTemplate}>
-                    Create Template
+                  <Button 
+                    onClick={handleCreateTemplate}
+                    disabled={createTemplate.isPending}
+                  >
+                    {createTemplate.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Template"
+                    )}
                   </Button>
                 </div>
               </div>
@@ -350,7 +420,7 @@ export default function Templates() {
               <FileText className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Total Templates</span>
             </div>
-            <p className="text-2xl font-bold mt-2">{mockTemplates.length}</p>
+            <p className="text-2xl font-bold mt-2">{templates.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -360,7 +430,7 @@ export default function Templates() {
               <span className="text-sm text-muted-foreground">Email Templates</span>
             </div>
             <p className="text-2xl font-bold mt-2">
-              {mockTemplates.filter(t => t.channel === 'email').length}
+              {templates.filter((t: any) => t.channel === 'email').length}
             </p>
           </CardContent>
         </Card>
@@ -371,7 +441,7 @@ export default function Templates() {
               <span className="text-sm text-muted-foreground">Social Templates</span>
             </div>
             <p className="text-2xl font-bold mt-2">
-              {mockTemplates.filter(t => t.channel !== 'email').length}
+              {templates.filter((t: any) => t.channel !== 'email').length}
             </p>
           </CardContent>
         </Card>
@@ -379,9 +449,9 @@ export default function Templates() {
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
               <Wand2 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">AI Generated</span>
+              <span className="text-sm text-muted-foreground">Active Leads</span>
             </div>
-            <p className="text-2xl font-bold mt-2">12</p>
+            <p className="text-2xl font-bold mt-2">{leads.length}</p>
           </CardContent>
         </Card>
       </div>
@@ -431,7 +501,7 @@ export default function Templates() {
 
       {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTemplates.map((template) => {
+        {filteredTemplates.map((template: any) => {
           const ChannelIcon = getChannelIcon(template.channel);
           return (
             <Card key={template.id} className="hover:shadow-lg transition-shadow">
@@ -464,6 +534,10 @@ export default function Templates() {
                       <DropdownMenuItem onClick={() => setPreviewTemplate(template)}>
                         <Eye className="w-4 h-4 mr-2" />
                         Preview
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleUseTemplate(template)}>
+                        <Send className="w-4 h-4 mr-2" />
+                        Use Template
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openEditDialog(template)}>
                         <Edit className="w-4 h-4 mr-2" />
@@ -501,10 +575,16 @@ export default function Templates() {
                   <span className="text-xs text-muted-foreground">
                     Updated {new Date(template.updated_at).toLocaleDateString()}
                   </span>
-                  <Button variant="outline" size="sm" onClick={() => setPreviewTemplate(template)}>
-                    <Eye className="w-3 h-3 mr-1" />
-                    Preview
-                  </Button>
+                  <div className="flex space-x-1">
+                    <Button variant="outline" size="sm" onClick={() => setPreviewTemplate(template)}>
+                      <Eye className="w-3 h-3 mr-1" />
+                      Preview
+                    </Button>
+                    <Button size="sm" onClick={() => handleUseTemplate(template)}>
+                      <Send className="w-3 h-3 mr-1" />
+                      Use
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -625,10 +705,70 @@ export default function Templates() {
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleEditTemplate}>
-                Update Template
+              <Button 
+                onClick={handleEditTemplate}
+                disabled={updateTemplate.isPending}
+              >
+                {updateTemplate.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Template"
+                )}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Use Template Dialog */}
+      <Dialog open={isUseTemplateOpen} onOpenChange={setIsUseTemplateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Use Template: {selectedTemplate?.name}</DialogTitle>
+            <DialogDescription>
+              Select a lead to send this message to
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="max-h-60 overflow-y-auto space-y-2">
+              {leads.map((lead: any) => (
+                <div
+                  key={lead.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted cursor-pointer"
+                  onClick={() => setSelectedLead(lead)}
+                >
+                  <div>
+                    <p className="font-medium">{lead.name}</p>
+                    <p className="text-sm text-muted-foreground">{lead.company} • {lead.title}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSendMessage(lead.id);
+                    }}
+                    disabled={createMessage.isPending}
+                  >
+                    {createMessage.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Create Message
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+            {leads.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No leads available. Create some leads first.</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -686,13 +826,40 @@ export default function Templates() {
                 </div>
               </div>
               
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
                   Close
+                </Button>
+                <Button onClick={() => {
+                  setPreviewTemplate(null);
+                  handleUseTemplate(previewTemplate);
+                }}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Use Template
                 </Button>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Generator Dialog */}
+      <Dialog open={isAIGeneratorOpen} onOpenChange={setIsAIGeneratorOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>AI Message Generator</DialogTitle>
+            <DialogDescription>
+              Generate personalized messages using AI
+            </DialogDescription>
+          </DialogHeader>
+          <MessageGenerator 
+            leadData={{
+              name: "Sample Lead",
+              company: "Sample Company",
+              title: "Sample Title",
+              industry: "Sample Industry"
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

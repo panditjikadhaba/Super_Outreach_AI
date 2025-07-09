@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { LeadForm } from "@/components/leads/LeadForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLeads } from "@/hooks/useSupabase";
 import { 
   Plus, 
   Upload,
@@ -19,61 +22,6 @@ import {
   Globe
 } from "lucide-react";
 
-const mockLeads = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    email: "sarah@techstartup.com",
-    company: "TechStartup Inc",
-    title: "VP of Marketing",
-    industry: "SaaS",
-    location: "San Francisco, CA",
-    status: "contacted",
-    lastContact: "2024-01-15",
-    source: "LinkedIn",
-    phone: "+1 (555) 123-4567"
-  },
-  {
-    id: "2",
-    name: "Michael Chen",
-    email: "m.chen@enterprise.io",
-    company: "Enterprise Solutions",
-    title: "Chief Technology Officer", 
-    industry: "Enterprise Software",
-    location: "New York, NY",
-    status: "replied",
-    lastContact: "2024-01-14",
-    source: "Apollo",
-    phone: "+1 (555) 987-6543"
-  },
-  {
-    id: "3",
-    name: "Emma Rodriguez",
-    email: "emma@growthco.com",
-    company: "GrowthCo",
-    title: "Head of Sales",
-    industry: "Marketing Tech",
-    location: "Austin, TX", 
-    status: "opened",
-    lastContact: "2024-01-13",
-    source: "CSV Import",
-    phone: "+1 (555) 456-7890"
-  },
-  {
-    id: "4",
-    name: "David Park",
-    email: "david@innovation.ai",
-    company: "Innovation AI",
-    title: "Founder & CEO",
-    industry: "AI/ML",
-    location: "Seattle, WA",
-    status: "new",
-    lastContact: null,
-    source: "Referral",
-    phone: "+1 (555) 321-0987"
-  }
-];
-
 const statusColors = {
   new: "bg-blue-100 text-blue-800",
   contacted: "bg-yellow-100 text-yellow-800", 
@@ -86,8 +34,11 @@ const statusColors = {
 export default function Leads() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  
+  const { data: leads = [], isLoading } = useLeads();
 
-  const filteredLeads = mockLeads.filter(lead => {
+  const filteredLeads = leads.filter((lead: any) => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.company.toLowerCase().includes(searchTerm.toLowerCase());
@@ -98,8 +49,8 @@ export default function Leads() {
   });
 
   const getStatusCount = (status: string) => {
-    if (status === "all") return mockLeads.length;
-    return mockLeads.filter(lead => lead.status === status).length;
+    if (status === "all") return leads.length;
+    return leads.filter((lead: any) => lead.status === status).length;
   };
 
   return (
@@ -121,10 +72,20 @@ export default function Leads() {
             <Upload className="w-4 h-4 mr-2" />
             Import CSV
           </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Lead
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <LeadForm 
+                onSuccess={() => setIsCreateDialogOpen(false)}
+                onCancel={() => setIsCreateDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -136,8 +97,8 @@ export default function Leads() {
               <User className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Total Leads</span>
             </div>
-            <p className="text-2xl font-bold mt-2">12,847</p>
-            <p className="text-xs text-accent">+234 this week</p>
+            <p className="text-2xl font-bold mt-2">{leads.length}</p>
+            <p className="text-xs text-accent">Active leads</p>
           </CardContent>
         </Card>
         <Card>
@@ -146,8 +107,8 @@ export default function Leads() {
               <Mail className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Contacted</span>
             </div>
-            <p className="text-2xl font-bold mt-2">4,329</p>
-            <p className="text-xs text-primary">33.7% of total</p>
+            <p className="text-2xl font-bold mt-2">{leads.filter((l: any) => l.status === 'contacted').length}</p>
+            <p className="text-xs text-primary">Contacted leads</p>
           </CardContent>
         </Card>
         <Card>
@@ -156,8 +117,8 @@ export default function Leads() {
               <MessageSquare className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Replied</span>
             </div>
-            <p className="text-2xl font-bold mt-2">1,024</p>
-            <p className="text-xs text-accent">23.6% reply rate</p>
+            <p className="text-2xl font-bold mt-2">{leads.filter((l: any) => l.status === 'replied').length}</p>
+            <p className="text-xs text-accent">Replied leads</p>
           </CardContent>
         </Card>
         <Card>
@@ -166,8 +127,8 @@ export default function Leads() {
               <Building className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Companies</span>
             </div>
-            <p className="text-2xl font-bold mt-2">3,456</p>
-            <p className="text-xs text-muted-foreground">Unique</p>
+            <p className="text-2xl font-bold mt-2">{new Set(leads.map((l: any) => l.company).filter(Boolean)).size}</p>
+            <p className="text-xs text-muted-foreground">Unique companies</p>
           </CardContent>
         </Card>
       </div>
@@ -241,7 +202,7 @@ export default function Leads() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeads.map((lead) => (
+                  {filteredLeads.map((lead: any) => (
                     <TableRow key={lead.id}>
                       <TableCell>
                         <div>
@@ -252,10 +213,9 @@ export default function Leads() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{lead.company}</p>
-                          <p className="text-sm text-muted-foreground flex items-center">
-                            <Globe className="w-3 h-3 mr-1" />
-                            {lead.location}
-                          </p>
+                          {lead.industry && (
+                            <p className="text-sm text-muted-foreground">{lead.industry}</p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>{lead.title}</TableCell>
@@ -265,7 +225,7 @@ export default function Leads() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {lead.lastContact ? new Date(lead.lastContact).toLocaleDateString() : "Never"}
+                        {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : "Never"}
                       </TableCell>
                       <TableCell>{lead.source}</TableCell>
                       <TableCell>

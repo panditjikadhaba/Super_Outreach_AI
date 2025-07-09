@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Campaigns from "./pages/Campaigns";
 import Leads from "./pages/Leads";
 import Messages from "./pages/Messages";
+import Templates from "./pages/Templates";
 import Analytics from "./pages/Analytics";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -43,6 +44,11 @@ const App = () => (
             <Route path="/messages" element={
               <ProtectedRoute>
                 <Layout><Messages /></Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/templates" element={
+              <ProtectedRoute>
+                <Layout><Templates /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/analytics" element={

@@ -5,6 +5,7 @@ import {
   Users, 
   Mail, 
   MessageSquare, 
+  FileText,
   Plus,
   Home,
   Target,
@@ -19,6 +20,7 @@ const navigation = [
   { name: "Campaigns", href: "/campaigns", icon: Target },
   { name: "Leads", href: "/leads", icon: Users },
   { name: "Messages", href: "/messages", icon: MessageSquare },
+  { name: "Templates", href: "/templates", icon: FileText },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
 

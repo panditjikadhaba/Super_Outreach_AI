@@ -57,7 +57,7 @@ export default function Campaigns() {
   };
 
   const getStatusCount = (status: string) => {
-    if (status === "all") return mockCampaigns.length;
+    if (status === "all") return campaigns?.length || 0;
     return transformedCampaigns.filter(c => c.status === status).length;
   };
 

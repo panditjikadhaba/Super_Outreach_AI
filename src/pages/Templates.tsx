@@ -385,7 +385,7 @@ export default function Templates() {
                     rows={8}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use variables like {{name}}, {{company}}, {{title}}, {{industry}} for personalization
+                    Use variables like {`{{name}}, {{company}}, {{title}}, {{industry}}`} for personalization
                   </p>
                 </div>
                 <div className="flex justify-end space-x-2">

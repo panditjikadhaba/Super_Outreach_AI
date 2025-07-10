@@ -19,6 +19,7 @@ import {
   Target
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MessageGeneratorProps {
   leadData?: {
@@ -107,25 +108,21 @@ export function MessageGenerator({ leadData }: MessageGeneratorProps) {
     setIsGenerating(true);
     
     try {
-      const response = await fetch('/supabase/functions/v1/generate-message', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('generate-message', {
+        body: {
           leadData,
           channel: messageType,
           messageType: 'cold_outreach',
           tone,
           customPrompt
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate message');
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to generate message');
       }
 
-      const { subject, content } = await response.json();
+      const { subject, content } = response.data;
       
       const formattedMessage = messageType === "email" && subject 
         ? `Subject: ${subject}\n\n${content}`

@@ -82,20 +82,6 @@ export default function Campaigns() {
                 <Plus className="w-4 h-4 mr-2" />
                 New Campaign
               </Button>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Your First Campaign
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl">
-                  <CampaignForm 
-                    onSuccess={() => setIsCreateDialogOpen(false)}
-                    onCancel={() => setIsCreateDialogOpen(false)}
-                  />
-                </DialogContent>
-              </Dialog>
             </DialogTrigger>
             <DialogContent className="max-w-3xl">
               <CampaignForm 

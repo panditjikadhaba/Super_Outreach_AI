@@ -167,7 +167,7 @@ export default function Campaigns() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button>
+                <Button onClick={() => setIsCreateDialogOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Create Your First Campaign
                 </Button>

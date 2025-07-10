@@ -89,6 +89,12 @@ export default function Campaigns() {
                 onCancel={() => setIsCreateDialogOpen(false)}
               />
             </DialogContent>
+            <DialogContent className="max-w-3xl">
+              <CampaignForm 
+                onSuccess={() => setIsCreateDialogOpen(false)}
+                onCancel={() => setIsCreateDialogOpen(false)}
+              />
+            </DialogContent>
           </Dialog>
         </div>
       </div>
